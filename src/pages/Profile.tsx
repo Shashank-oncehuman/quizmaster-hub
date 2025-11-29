@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Target, Clock, TrendingUp } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import { AchievementsSection } from "@/components/AchievementsSection";
 
 interface Profile {
   username: string;
@@ -208,6 +209,9 @@ const Profile = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Achievements Section */}
+          <AchievementsSection />
 
           {/* Quiz History */}
           <Card>
