@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, FileQuestion, Award, BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Clock, FileQuestion, Award, BookOpen, Search, Filter } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
 // Mock data structure - you'll replace this with actual API calls
@@ -29,6 +31,10 @@ const Home = () => {
   const [user, setUser] = useState<any>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
+  const [filteredTestSeries, setFilteredTestSeries] = useState<TestSeries[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priceFilter, setPriceFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("popular");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,20 +70,89 @@ const Home = () => {
       },
     ]);
 
-    setTestSeries([
+    const mockTestSeries = [
       {
         id: "554",
         title: "Airforce 01/2027 Paid Test Series",
         logo: "https://appx-content-v2.classx.co.in/subject/2025-11-01-0_7742947516682324.png",
         price: 149,
         offer_price: 149,
-        totaltesttitle: "1",
+        totaltesttitle: "15",
         validity: "12",
       },
-    ]);
+      {
+        id: "546",
+        title: "Agniveer Navy SSR Stage 2 Test Series 2025",
+        logo: "https://appx-content-v2.classx.co.in/subject/2025-10-24-0_5725865716141157.png",
+        price: 0,
+        offer_price: 0,
+        totaltesttitle: "12",
+        validity: "12",
+      },
+      {
+        id: "547",
+        title: "Agniveer Navy MR Stage 2 Test Series 2025",
+        logo: "https://appx-content-v2.classx.co.in/subject/2025-10-25-0_659564551035573.png",
+        price: 0,
+        offer_price: 0,
+        totaltesttitle: "10",
+        validity: "12",
+      },
+      {
+        id: "534",
+        title: "BSF RO/RM Paid Test Series 2025",
+        logo: "https://appx-content-v2.classx.co.in/subject/2025-10-07-0_7408899781051559.png",
+        price: 149,
+        offer_price: 99,
+        totaltesttitle: "20",
+        validity: "12",
+      },
+      {
+        id: "503",
+        title: "CAPF (BSF HCM & ASI) Paid Test Series 2025",
+        logo: "https://appx-content-v2.classx.co.in/subject/2025-09-02-0_8783068605489902.jpeg",
+        price: 99,
+        offer_price: 99,
+        totaltesttitle: "18",
+        validity: "12",
+      },
+    ];
+    
+    setTestSeries(mockTestSeries);
+    setFilteredTestSeries(mockTestSeries);
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Filter and search effect
+  useEffect(() => {
+    let filtered = [...testSeries];
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter((series) =>
+        series.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply price filter
+    if (priceFilter === "free") {
+      filtered = filtered.filter((series) => series.price === 0);
+    } else if (priceFilter === "paid") {
+      filtered = filtered.filter((series) => series.price > 0);
+    }
+
+    // Apply sorting
+    if (sortBy === "price-low") {
+      filtered.sort((a, b) => a.offer_price - b.offer_price);
+    } else if (sortBy === "price-high") {
+      filtered.sort((a, b) => b.offer_price - a.offer_price);
+    } else if (sortBy === "tests") {
+      filtered.sort((a, b) => parseInt(b.totaltesttitle) - parseInt(a.totaltesttitle));
+    }
+
+    setFilteredTestSeries(filtered);
+  }, [searchQuery, priceFilter, sortBy, testSeries]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,9 +187,52 @@ const Home = () => {
 
         {/* Test Series Section */}
         <section className="mb-12">
-          <h2 className="text-3xl font-bold mb-6">Available Test Series</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {testSeries.map((series) => (
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+            <h2 className="text-3xl font-bold">Available Test Series</h2>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search */}
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search test series..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Price Filter */}
+              <Select value={priceFilter} onValueChange={setPriceFilter}>
+                <SelectTrigger className="w-full sm:w-32">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Price" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Sort */}
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="popular">Popular</SelectItem>
+                  <SelectItem value="price-low">Price: Low to High</SelectItem>
+                  <SelectItem value="price-high">Price: High to Low</SelectItem>
+                  <SelectItem value="tests">Most Tests</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {filteredTestSeries.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTestSeries.map((series) => (
               <Card
                 key={series.id}
                 className="overflow-hidden hover:shadow-lg transition-smooth cursor-pointer group"
@@ -160,8 +278,15 @@ const Home = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-card rounded-lg border">
+              <FileQuestion className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-xl font-semibold mb-2">No test series found</h3>
+              <p className="text-muted-foreground">Try adjusting your search or filters</p>
+            </div>
+          )}
         </section>
 
         {/* Subjects Section */}
