@@ -11,8 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { GraduationCap, Trophy, User, LogOut, BarChart3 } from "lucide-react";
+import { GraduationCap, Trophy, User, LogOut, BarChart3, Shield } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 const Navbar = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -87,13 +88,23 @@ const Navbar = () => {
               </Link>
 
               {isAdmin && (
-                <Link to="/analytics">
-                  <Button variant="ghost" size="sm">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Analytics
-                  </Button>
-                </Link>
+                <>
+                  <Link to="/analytics">
+                    <Button variant="ghost" size="sm">
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Analytics
+                    </Button>
+                  </Link>
+                  <Link to="/admin">
+                    <Button variant="ghost" size="sm">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin Panel
+                    </Button>
+                  </Link>
+                </>
               )}
+
+              <NotificationsDropdown />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
