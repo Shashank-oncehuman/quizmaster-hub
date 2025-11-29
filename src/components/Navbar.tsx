@@ -11,12 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { GraduationCap, Trophy, User, LogOut } from "lucide-react";
+import { GraduationCap, Trophy, User, LogOut, BarChart3 } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 const Navbar = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,6 +49,16 @@ const Navbar = () => {
       .eq("id", userId)
       .single();
     setProfile(data);
+
+    // Check if user is admin
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    
+    setIsAdmin(!!roleData);
   };
 
   const handleSignOut = async () => {
@@ -74,6 +85,15 @@ const Navbar = () => {
                   Leaderboard
                 </Button>
               </Link>
+
+              {isAdmin && (
+                <Link to="/analytics">
+                  <Button variant="ghost" size="sm">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Analytics
+                  </Button>
+                </Link>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
