@@ -127,20 +127,15 @@ const Quiz = () => {
     });
 
     const score = correctCount;
-    const percentage = (score / questions.length) * 100;
+    const accuracy = (score / questions.length) * 100;
     const timeTaken = 1800 - timeLeft;
 
     const { error } = await supabase
       .from("quiz_attempts")
       .update({
-        answered_questions: Object.keys(answers).length,
-        correct_answers: correctCount,
-        wrong_answers: Object.keys(answers).length - correctCount,
         score,
-        percentage,
-        time_taken: timeTaken,
-        completed_at: new Date().toISOString(),
-        answers: answers,
+        accuracy,
+        time_taken_seconds: timeTaken,
       })
       .eq("id", quizAttemptId);
 
