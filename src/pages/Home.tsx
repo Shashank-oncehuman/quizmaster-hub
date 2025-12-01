@@ -1,198 +1,167 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, FileQuestion, Award, BookOpen, Search, Filter } from "lucide-react";
-import Navbar from "@/components/Navbar";
-
-// Mock data structure - you'll replace this with actual API calls
-interface Subject {
-  subjectid: string;
-  subject_name: string;
-  subject_logo: string;
-  is_paid: number;
-}
-
-interface TestSeries {
-  id: string;
-  title: string;
-  logo: string;
-  price: number;
-  offer_price: number;
-  totaltesttitle: string;
-  validity: string;
-}
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BookOpen, Users, Award, Search, Loader2 } from "lucide-react";
+import { useApiProviders, useTestSeries } from "@/hooks/useApiData";
 
 const Home = () => {
   const [user, setUser] = useState<any>(null);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
-  const [filteredTestSeries, setFilteredTestSeries] = useState<TestSeries[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [priceFilter, setPriceFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("popular");
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [priceFilter, setPriceFilter] = useState<"all" | "free" | "paid">("all");
+  const [sortBy, setSortBy] = useState<"popularity" | "price_low" | "price_high" | "tests">("popularity");
   const navigate = useNavigate();
+
+  const { providers, loading: providersLoading } = useApiProviders();
+  const { testSeries, loading: seriesLoading } = useTestSeries(selectedProvider);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
       if (!session) {
         navigate("/auth");
+      } else {
+        setUser(session.user);
       }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
       if (!session) {
         navigate("/auth");
+      } else {
+        setUser(session.user);
       }
     });
-
-    // Mock data - Replace with actual API calls
-    setSubjects([
-      {
-        subjectid: "2122",
-        subject_name: "Airforce (Tech. Physics)",
-        subject_logo: "https://appx-content-v2.classx.co.in/subject/2025-11-01-0_4165515018200583.png",
-        is_paid: 0,
-      },
-      {
-        subjectid: "2123",
-        subject_name: "Airforce (Tech. Maths)",
-        subject_logo: "https://appx-content-v2.classx.co.in/subject/2025-11-01-0_13339394150023676.png",
-        is_paid: 0,
-      },
-    ]);
-
-    const mockTestSeries = [
-      {
-        id: "554",
-        title: "Airforce 01/2027 Paid Test Series",
-        logo: "https://appx-content-v2.classx.co.in/subject/2025-11-01-0_7742947516682324.png",
-        price: 149,
-        offer_price: 149,
-        totaltesttitle: "15",
-        validity: "12",
-      },
-      {
-        id: "546",
-        title: "Agniveer Navy SSR Stage 2 Test Series 2025",
-        logo: "https://appx-content-v2.classx.co.in/subject/2025-10-24-0_5725865716141157.png",
-        price: 0,
-        offer_price: 0,
-        totaltesttitle: "12",
-        validity: "12",
-      },
-      {
-        id: "547",
-        title: "Agniveer Navy MR Stage 2 Test Series 2025",
-        logo: "https://appx-content-v2.classx.co.in/subject/2025-10-25-0_659564551035573.png",
-        price: 0,
-        offer_price: 0,
-        totaltesttitle: "10",
-        validity: "12",
-      },
-      {
-        id: "534",
-        title: "BSF RO/RM Paid Test Series 2025",
-        logo: "https://appx-content-v2.classx.co.in/subject/2025-10-07-0_7408899781051559.png",
-        price: 149,
-        offer_price: 99,
-        totaltesttitle: "20",
-        validity: "12",
-      },
-      {
-        id: "503",
-        title: "CAPF (BSF HCM & ASI) Paid Test Series 2025",
-        logo: "https://appx-content-v2.classx.co.in/subject/2025-09-02-0_8783068605489902.jpeg",
-        price: 99,
-        offer_price: 99,
-        totaltesttitle: "18",
-        validity: "12",
-      },
-    ];
-    
-    setTestSeries(mockTestSeries);
-    setFilteredTestSeries(mockTestSeries);
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Filter and search effect
+  // Set default provider when providers load
   useEffect(() => {
-    let filtered = [...testSeries];
-
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter((series) =>
-        series.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    if (providers.length > 0 && !selectedProvider) {
+      setSelectedProvider(providers[0].api);
     }
+  }, [providers, selectedProvider]);
 
-    // Apply price filter
-    if (priceFilter === "free") {
-      filtered = filtered.filter((series) => series.price === 0);
-    } else if (priceFilter === "paid") {
-      filtered = filtered.filter((series) => series.price > 0);
+  // Save selected API URL for TestSeries page
+  useEffect(() => {
+    if (selectedProvider) {
+      localStorage.setItem("selectedApiUrl", selectedProvider);
     }
+  }, [selectedProvider]);
 
-    // Apply sorting
-    if (sortBy === "price-low") {
-      filtered.sort((a, b) => a.offer_price - b.offer_price);
-    } else if (sortBy === "price-high") {
-      filtered.sort((a, b) => b.offer_price - a.offer_price);
-    } else if (sortBy === "tests") {
-      filtered.sort((a, b) => parseInt(b.totaltesttitle) - parseInt(a.totaltesttitle));
-    }
-
-    setFilteredTestSeries(filtered);
-  }, [searchQuery, priceFilter, sortBy, testSeries]);
+  // Filter and sort test series
+  const filteredTestSeries = testSeries
+    .filter((series) => {
+      const matchesSearch = series.series_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPrice =
+        priceFilter === "all" ||
+        (priceFilter === "free" && !series.is_paid) ||
+        (priceFilter === "paid" && series.is_paid);
+      return matchesSearch && matchesPrice;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "price_low":
+          return (a.price || 0) - (b.price || 0);
+        case "price_high":
+          return (b.price || 0) - (a.price || 0);
+        case "tests":
+          return b.total_tests - a.total_tests;
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <section className="mb-12 relative overflow-hidden rounded-2xl p-8 gradient-hero text-primary-foreground">
-          <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Master Your Knowledge
-            </h1>
-            <p className="text-lg md:text-xl mb-6 opacity-90">
-              Take quizzes, compete with others, and climb the leaderboard!
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center space-x-2 bg-card/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                <FileQuestion className="h-5 w-5" />
-                <span className="font-semibold">1000+ Questions</span>
-              </div>
-              <div className="flex items-center space-x-2 bg-card/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                <Award className="h-5 w-5" />
-                <span className="font-semibold">50+ Test Series</span>
-              </div>
-              <div className="flex items-center space-x-2 bg-card/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                <BookOpen className="h-5 w-5" />
-                <span className="font-semibold">15+ Subjects</span>
-              </div>
-            </div>
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-primary/10 via-background to-accent/10 py-20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Welcome to Study Ocean
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Master your subjects with our comprehensive test series. Practice, compete, and excel!
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto mt-12">
+            <Card className="border-primary/20">
+              <CardContent className="pt-6 text-center">
+                <div className="p-3 bg-primary/10 rounded-full w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                  <BookOpen className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-2">100+ Test Series</h3>
+                <p className="text-sm text-muted-foreground">Comprehensive coverage</p>
+              </CardContent>
+            </Card>
+            <Card className="border-primary/20">
+              <CardContent className="pt-6 text-center">
+                <div className="p-3 bg-primary/10 rounded-full w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-2">Global Competition</h3>
+                <p className="text-sm text-muted-foreground">Compete with learners</p>
+              </CardContent>
+            </Card>
+            <Card className="border-primary/20">
+              <CardContent className="pt-6 text-center">
+                <div className="p-3 bg-primary/10 rounded-full w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                  <Award className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-2">Track Progress</h3>
+                <p className="text-sm text-muted-foreground">Analytics & achievements</p>
+              </CardContent>
+            </Card>
           </div>
-        </section>
+        </div>
+      </section>
+
+      <main className="container mx-auto px-4 py-12">
+        {/* Institution Selector */}
+        <div className="mb-8">
+          <label className="text-sm font-medium mb-2 block">Select Institution</label>
+          <Select
+            value={selectedProvider || undefined}
+            onValueChange={setSelectedProvider}
+            disabled={providersLoading}
+          >
+            <SelectTrigger className="w-full md:w-96">
+              <SelectValue placeholder="Choose an institution..." />
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map((provider) => (
+                <SelectItem key={provider.api} value={provider.api}>
+                  {provider.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Test Series Section */}
         <section className="mb-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-            <h2 className="text-3xl font-bold">Available Test Series</h2>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Search */}
-              <div className="relative flex-1 sm:w-64">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Available Test Series</h2>
+              <p className="text-muted-foreground">Browse and start your learning journey</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search test series..."
@@ -201,12 +170,9 @@ const Home = () => {
                   className="pl-10"
                 />
               </div>
-
-              {/* Price Filter */}
-              <Select value={priceFilter} onValueChange={setPriceFilter}>
+              <Select value={priceFilter} onValueChange={(value: any) => setPriceFilter(value)}>
                 <SelectTrigger className="w-full sm:w-32">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Price" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
@@ -214,109 +180,66 @@ const Home = () => {
                   <SelectItem value="paid">Paid</SelectItem>
                 </SelectContent>
               </Select>
-
-              {/* Sort */}
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
                 <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="Sort by" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="popular">Popular</SelectItem>
-                  <SelectItem value="price-low">Price: Low to High</SelectItem>
-                  <SelectItem value="price-high">Price: High to Low</SelectItem>
+                  <SelectItem value="popularity">Popular</SelectItem>
+                  <SelectItem value="price_low">Price: Low</SelectItem>
+                  <SelectItem value="price_high">Price: High</SelectItem>
                   <SelectItem value="tests">Most Tests</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {filteredTestSeries.length > 0 ? (
+          {seriesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Loading test series...</span>
+            </div>
+          ) : filteredTestSeries.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTestSeries.map((series) => (
-              <Card
-                key={series.id}
-                className="overflow-hidden hover:shadow-lg transition-smooth cursor-pointer group"
-                onClick={() => navigate(`/test-series/${series.id}`)}
-              >
-                <div className="aspect-video relative overflow-hidden bg-gradient-to-br from-primary/10 to-accent/10">
-                  <img
-                    src={series.logo}
-                    alt={series.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-smooth"
-                  />
-                </div>
-                <CardHeader>
-                  <CardTitle className="line-clamp-2">{series.title}</CardTitle>
-                  <CardDescription className="flex items-center justify-between">
-                    <span className="flex items-center">
-                      <FileQuestion className="h-4 w-4 mr-1" />
-                      {series.totaltesttitle} Tests
-                    </span>
-                    <span className="flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {series.validity} Months
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    {series.price > 0 ? (
-                      <div>
-                        <span className="text-2xl font-bold text-primary">₹{series.offer_price}</span>
-                        {series.price !== series.offer_price && (
-                          <span className="text-sm text-muted-foreground line-through ml-2">
-                            ₹{series.price}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <Badge variant="secondary" className="text-lg px-3 py-1">
-                        Free
+                <Card
+                  key={series.test_id}
+                  className="hover:shadow-lg transition-smooth cursor-pointer group"
+                  onClick={() => navigate(`/test-series/${series.test_id}`)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between mb-3">
+                      {series.series_logo && (
+                        <img
+                          src={series.series_logo}
+                          alt={series.series_name}
+                          className="h-12 w-12 object-contain rounded"
+                        />
+                      )}
+                      <Badge variant={series.is_paid ? "default" : "secondary"}>
+                        {series.is_paid ? `₹${series.price}` : "Free"}
                       </Badge>
-                    )}
-                    <Button>View Tests</Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                    <CardTitle className="group-hover:text-primary transition-smooth">
+                      {series.series_name}
+                    </CardTitle>
+                    <CardDescription>
+                      {series.total_tests} tests • {series.validity_days} days validity
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button className="w-full" variant="outline">
+                      View Details
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-card rounded-lg border">
-              <FileQuestion className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-xl font-semibold mb-2">No test series found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters</p>
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No test series found. Try a different search or filter.</p>
             </div>
           )}
-        </section>
-
-        {/* Subjects Section */}
-        <section>
-          <h2 className="text-3xl font-bold mb-6">Browse by Subject</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {subjects.map((subject) => (
-              <Card
-                key={subject.subjectid}
-                className="overflow-hidden hover:shadow-md transition-smooth cursor-pointer group"
-                onClick={() => navigate(`/subject/${subject.subjectid}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="aspect-square relative overflow-hidden rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 mb-3">
-                    <img
-                      src={subject.subject_logo}
-                      alt={subject.subject_name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-smooth"
-                    />
-                  </div>
-                  <h3 className="font-semibold text-center line-clamp-2">{subject.subject_name}</h3>
-                  {subject.is_paid === 1 && (
-                    <Badge variant="secondary" className="mt-2 w-full justify-center">
-                      Premium
-                    </Badge>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </section>
       </main>
     </div>
